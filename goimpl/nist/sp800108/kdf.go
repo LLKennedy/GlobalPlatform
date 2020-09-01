@@ -21,17 +21,63 @@ const (
 	CounterLength32 Counter = 32
 )
 
+// InputStringOrdering defines an element in the KDF Input String
+type InputStringOrdering uint
+
+const (
+	// InputOrderLabel is the label
+	InputOrderLabel InputStringOrdering = iota
+	// InputOrderContext is the context
+	InputOrderContext
+	// InputOrderL is the output data length as big-endian binary integer L
+	InputOrderL
+	// InputOrderEmptySeparator is 0x00
+	InputOrderEmptySeparator
+	// InputOrderCounter is the counter variable
+	InputOrderCounter
+)
+
+func validateOrdering(order []InputStringOrdering) error {
+	if order == nil {
+		return fmt.Errorf("completely empty input data is invalid")
+	}
+	if len(order) > 5 {
+		return fmt.Errorf("there are only 5 valid input string element types, ordering is invalid with %d elements", len(order))
+	}
+	foundCounter := false
+	for i, orderElem := range order {
+		switch orderElem {
+		case InputOrderContext, InputOrderCounter, InputOrderEmptySeparator, InputOrderL, InputOrderLabel:
+			// Valid value, now check it's unique in this order
+			for j := i + 1; j < len(order); j++ {
+				if orderElem == order[j] {
+					return fmt.Errorf("duplicate input string ordering element at indices %d and %d", i, j)
+				}
+			}
+			if orderElem == InputOrderCounter {
+				foundCounter = true
+			}
+		default:
+			return fmt.Errorf("invalid input string ordering element: %d", orderElem)
+		}
+	}
+	if !foundCounter {
+		return fmt.Errorf("counter is mandatory in input string ordering")
+	}
+	return nil
+}
+
 // KDF is a Key Derivation Function
 type KDF interface {
 	// Derive uses the key and keying material to generate a derived key(set) of the desired size. Output size is big-endian
-	Derive(prf PRF, counterLengthR Counter, inputKey, label, context, outputSizeBits []byte, includeEmptySeparator bool) ([]byte, error)
+	Derive(prf PRF, counterLengthR Counter, inputKey, label, context, outputSizeBits []byte, inputOrder []InputStringOrdering) ([]byte, error)
 }
 
 // CounterKBKDF is the NIST Key Based Key Derivation Function in counter mode
 type CounterKBKDF struct{}
 
 // Derive uses the key and keying material to generate a derived key(set) of the desired size
-func (c *CounterKBKDF) Derive(prf PRF, counterLengthR Counter, inputKey, label, context, outputSizeBits []byte, includeEmptySeparator bool) ([]byte, error) {
+func (c *CounterKBKDF) Derive(prf PRF, counterLengthR Counter, inputKey, label, context, outputSizeBits []byte, inputOrder []InputStringOrdering) ([]byte, error) {
 	if prf == nil {
 		return nil, fmt.Errorf("must provide PRF")
 	}
@@ -51,6 +97,9 @@ func (c *CounterKBKDF) Derive(prf PRF, counterLengthR Counter, inputKey, label, 
 	default:
 		// Allowed by the spec but not supported since we're working with whole bytes oonly
 		return nil, fmt.Errorf("invalid counter length, must be exactly 8, 16, 24 or 32")
+	}
+	if err := validateOrdering(inputOrder); err != nil {
+		return nil, fmt.Errorf("invalid input string ordering: %v", err)
 	}
 	hBytes := prf.OutputSizeBytes()
 	h := hBytes * 8
@@ -74,13 +123,30 @@ func (c *CounterKBKDF) Derive(prf PRF, counterLengthR Counter, inputKey, label, 
 	result := make([]byte, uint(n)*hBytes)
 	// Step 4: For i = 1 to n, do K(i) := PRF(K_I, [i]_2 || Label || 0x00 || Context || [L]_2)
 	// Allow optional omission of some fixed input fields though
-	fixedInput := make([]byte, len(label))
-	subtle.ConstantTimeCopy(1, fixedInput, label) // Probably not necessary to use subtle for this step?
-	if includeEmptySeparator {
-		fixedInput = append(fixedInput, 0x00)
+	prefix := []byte{}
+	suffix := []byte{}
+	foundCounterInOrdering := false
+	appendToCurrent := func(next []byte) {
+		if foundCounterInOrdering {
+			suffix = append(suffix, next...)
+		} else {
+			prefix = append(prefix, next...)
+		}
 	}
-	fixedInput = append(fixedInput, context...)
-	fixedInput = append(fixedInput, outputSizeBits...)
+	for _, orderElem := range inputOrder {
+		switch orderElem {
+		case InputOrderCounter:
+			foundCounterInOrdering = true
+		case InputOrderContext:
+			appendToCurrent(context)
+		case InputOrderEmptySeparator:
+			appendToCurrent([]byte{0x00})
+		case InputOrderL:
+			appendToCurrent(outputSizeBits)
+		case InputOrderLabel:
+			appendToCurrent(label)
+		}
+	}
 	for i := uint32(1); i <= n; i++ {
 		iBytes := make([]byte, 4)
 		binary.BigEndian.PutUint32(iBytes, i)
@@ -93,7 +159,9 @@ func (c *CounterKBKDF) Derive(prf PRF, counterLengthR Counter, inputKey, label, 
 		case CounterLength24:
 			iBytes = iBytes[1:]
 		}
-		nextInput := append(iBytes, fixedInput...)
+		nextInput := append([]byte{}, prefix...)
+		nextInput = append(nextInput, iBytes...)
+		nextInput = append(nextInput, suffix...)
 		nextOutput, err := prf.Compute(inputKey, nextInput)
 		if err != nil {
 			return nil, fmt.Errorf("PRF error: %v", err)
