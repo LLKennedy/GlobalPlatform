@@ -9,33 +9,47 @@ import (
 // PRF is a Pseudorandom Function acceptable to the NIST KBKDF
 type PRF interface {
 	// Compute generates new data from a key and keying material data.
-	Compute(data []byte) ([]byte, error)
+	Compute(key, data []byte) ([]byte, error)
+	// OutputSizeBytes indicates the output size of the PRF in bytes, non-byte multiples of output length are not supported
+	OutputSizeBytes() uint
 	unimplementableNISTSP800108PRF()
 }
 
 // PRFHMAC is the HMAC implementation of PRF
 type PRFHMAC struct {
-	hash hash.Hash
+	hashGen func() hash.Hash
 }
 
 // NewPRFHMAC creates a new HMAC PRF
-func NewPRFHMAC(hashGen func() hash.Hash, key []byte) *PRFHMAC {
+func NewPRFHMAC(hashGen func() hash.Hash) *PRFHMAC {
 	return &PRFHMAC{
-		hash: hmac.New(hashGen, key),
+		hashGen: hashGen,
 	}
 }
 
+// OutputSizeBytes indicates the output size of the PRF in bytes, non-byte multiples of output length are not supported
+func (p *PRFHMAC) OutputSizeBytes() uint {
+	if p == nil || p.hashGen == nil {
+		return 0
+	}
+	h := p.hashGen()
+	if h == nil {
+		return 0
+	}
+	return uint(h.Size())
+}
+
 // Compute generatesd new data from a key and keying material data
-func (p *PRFHMAC) Compute(data []byte) ([]byte, error) {
-	if p == nil || p.hash == nil {
+func (p *PRFHMAC) Compute(key, data []byte) ([]byte, error) {
+	if p == nil || p.hashGen == nil {
 		return nil, fmt.Errorf("invalid PRF")
 	}
-	p.hash.Reset()
-	_, err := p.hash.Write(data)
+	h := hmac.New(p.hashGen, key)
+	_, err := h.Write(data)
 	if err != nil {
 		return nil, err
 	}
-	out := p.hash.Sum(nil)
+	out := h.Sum(nil)
 	return out, nil
 }
 
