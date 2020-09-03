@@ -16,5 +16,5 @@ const (
 func IsValidCustomApplicationState(in Application) bool {
 	// Must be SELECTABLE + any b4-b7 set + 0 in b8
 	// This does mean that SELECTABLE by itself counts as a valid "custom" state, which is consistent with the spec
-	return in&ApplicationSelectable == ApplicationSelectable && in&0b10000000 == 0
+	return in&ApplicationSelectable == ApplicationSelectable && in&b8 == 0
 }

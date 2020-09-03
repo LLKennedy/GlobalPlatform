@@ -11,13 +11,13 @@ type Configuration struct {
 // ParseConfiguration parses a byte into the config flags
 func ParseConfiguration(in byte) Configuration {
 	conf := Configuration{}
-	conf.LegacyS8Mode = in&0b00000001 == 0
-	conf.PseudoRandomChallenge = in&0b00010000 > 0
-	conf.NoRMACEncryption = in&0b00100000 == 0
+	conf.LegacyS8Mode = in&b1 == 0
+	conf.PseudoRandomChallenge = in&b5 > 0
+	conf.NoRMACEncryption = in&b6 == 0
 	if conf.NoRMACEncryption {
 		conf.NoREncryption = true
 	} else {
-		conf.NoREncryption = in&0b01000000 == 0
+		conf.NoREncryption = in&b7 == 0
 	}
 	return conf
 }
@@ -26,15 +26,15 @@ func ParseConfiguration(in byte) Configuration {
 func (c Configuration) ToByte() byte {
 	out := byte(0)
 	if !c.LegacyS8Mode {
-		out = out | 0b00000001
+		out = out | b1
 	}
 	if c.PseudoRandomChallenge {
-		out = out | 0b00010000
+		out = out | b5
 	}
 	if !c.NoRMACEncryption {
-		out = out | 0b00100000
+		out = out | b6
 		if !c.NoREncryption {
-			out = out | 0b01000000
+			out = out | b7
 		}
 	}
 	return out
