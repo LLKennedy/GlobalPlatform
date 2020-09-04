@@ -17,10 +17,10 @@ const (
 // Class is any data type which can be converted to a Class byte
 // TODO: do we need setters, or will all processing be done before it gets passed along as the interface type?
 type Class interface {
+	// ToClassByte converts the class to a class byte
 	ToClassByte() byte
-	IsLastCommand() bool
-	GetSMIndication() CLASecureMessaging
-	GetLogicalChannel() uint8 // Must be 0-19, different ranges supported by different messages
+	// ToInterindustry attempts to return an interindustry class if this Class is or can be converted to one (not incompatible proprietary)
+	ToInterindustry() (InterindustryClass, error)
 }
 
 const (
@@ -68,6 +68,11 @@ func (c InterindustryClass) ToClassByte() byte {
 		out = out | (c.LogicalChannelNumber - longChannelsStart)
 	}
 	return out
+}
+
+// ToInterindustry just returns itself, because it's already an interindustry class
+func (c InterindustryClass) ToInterindustry() (InterindustryClass, error) {
+	return c, nil
 }
 
 // IsLastCommand returns whether this is the last command in the chian
