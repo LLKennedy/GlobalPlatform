@@ -1,4 +1,4 @@
-package apdu
+package gpapdu
 
 // Commands is the full client command list
 // TODO: none of these have actual arguments/returns yet

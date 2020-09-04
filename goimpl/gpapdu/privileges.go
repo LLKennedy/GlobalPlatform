@@ -1,4 +1,4 @@
-package apdu
+package gpapdu
 
 const (
 	privSecurityDomain            = 0x80

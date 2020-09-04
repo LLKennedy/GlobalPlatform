@@ -1,4 +1,4 @@
-package apdu
+package gpapdu
 
 import (
 	"testing"
