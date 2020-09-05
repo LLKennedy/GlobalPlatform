@@ -57,3 +57,39 @@ func TestError_String(t *testing.T) {
 		})
 	}
 }
+
+func TestNewError(t *testing.T) {
+	type args struct {
+		err [2]byte
+	}
+	tests := []struct {
+		name string
+		args args
+		want Error
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, NewError(tt.args.err))
+		})
+	}
+}
+
+func Test_formatErrorStringGeneral(t *testing.T) {
+	type args struct {
+		errString string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, formatErrorStringGeneral(tt.args.errString))
+		})
+	}
+}
