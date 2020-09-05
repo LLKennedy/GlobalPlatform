@@ -9,7 +9,6 @@ import (
 
 func TestTransportWrapper_Send(t *testing.T) {
 	type fields struct {
-		Mutex     sync.Mutex
 		Transport Transport
 	}
 	type args struct {
@@ -27,7 +26,7 @@ func TestTransportWrapper_Send(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			T := &TransportWrapper{
-				Mutex:     tt.fields.Mutex,
+				Mutex:     sync.Mutex{},
 				Transport: tt.fields.Transport,
 			}
 			got, err := T.Send(tt.args.cmd)
