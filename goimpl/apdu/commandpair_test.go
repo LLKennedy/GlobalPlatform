@@ -63,7 +63,7 @@ func TestCommand_ToBytes(t *testing.T) {
 				P2:                     0x78,
 				ExpectedResponseLength: 300,
 			},
-			want: []byte{0x12, 0x34, 0x56, 0x78, 0x01, 0x2C},
+			want: []byte{0x12, 0x34, 0x56, 0x78, 0x00, 0x01, 0x2C},
 		},
 		{
 			name: "case 2e.2",
@@ -75,7 +75,7 @@ func TestCommand_ToBytes(t *testing.T) {
 				ExpectResponseData:     true,
 				ExpectedResponseLength: 0,
 			},
-			want: []byte{0x12, 0x34, 0x56, 0x78, 0x00, 0x00},
+			want: []byte{0x12, 0x34, 0x56, 0x78, 0x00, 0x00, 0x00},
 		},
 		{
 			name: "case 3s.1",
@@ -96,13 +96,13 @@ func TestCommand_ToBytes(t *testing.T) {
 				P1:          0x56,
 				P2:          0x78,
 				Data: func() []byte {
-					data := make([]byte, 256)
+					data := make([]byte, 255)
 					return data
 				}(),
 			},
 			want: func() []byte {
-				data := []byte{0x12, 0x34, 0x56, 0x78, 0x00}
-				data = append(data, make([]byte, 256)...)
+				data := []byte{0x12, 0x34, 0x56, 0x78, 0xFF}
+				data = append(data, make([]byte, 255)...)
 				return data
 			}(),
 		},
@@ -119,7 +119,7 @@ func TestCommand_ToBytes(t *testing.T) {
 				}(),
 			},
 			want: func() []byte {
-				data := []byte{0x12, 0x34, 0x56, 0x78, 0x01, 0x2C}
+				data := []byte{0x12, 0x34, 0x56, 0x78, 0x00, 0x01, 0x2C}
 				data = append(data, make([]byte, 300)...)
 				return data
 			}(),
@@ -132,13 +132,13 @@ func TestCommand_ToBytes(t *testing.T) {
 				P1:          0x56,
 				P2:          0x78,
 				Data: func() []byte {
-					data := make([]byte, 65536)
+					data := make([]byte, 65535)
 					return data
 				}(),
 			},
 			want: func() []byte {
-				data := []byte{0x12, 0x34, 0x56, 0x78, 0x00, 0x00}
-				data = append(data, make([]byte, 65536)...)
+				data := []byte{0x12, 0x34, 0x56, 0x78, 0x00, 0xFF, 0xFF}
+				data = append(data, make([]byte, 65535)...)
 				return data
 			}(),
 		},
@@ -173,12 +173,12 @@ func TestCommand_ToBytes(t *testing.T) {
 				Instruction:            0x34,
 				P1:                     0x56,
 				P2:                     0x78,
-				Data:                   make([]byte, 256),
+				Data:                   make([]byte, 255),
 				ExpectedResponseLength: 0x57,
 			},
 			want: func() []byte {
-				data := []byte{0x12, 0x34, 0x56, 0x78, 0x00}
-				data = append(data, make([]byte, 256)...)
+				data := []byte{0x12, 0x34, 0x56, 0x78, 0xFF}
+				data = append(data, make([]byte, 255)...)
 				data = append(data, 0x57)
 				return data
 			}(),
@@ -190,12 +190,12 @@ func TestCommand_ToBytes(t *testing.T) {
 				Instruction:            0x34,
 				P1:                     0x56,
 				P2:                     0x78,
-				Data:                   make([]byte, 256),
+				Data:                   make([]byte, 255),
 				ExpectedResponseLength: 256,
 			},
 			want: func() []byte {
-				data := []byte{0x12, 0x34, 0x56, 0x78, 0x00}
-				data = append(data, make([]byte, 256)...)
+				data := []byte{0x12, 0x34, 0x56, 0x78, 0xFF}
+				data = append(data, make([]byte, 255)...)
 				data = append(data, 0x00)
 				return data
 			}(),
@@ -207,36 +207,36 @@ func TestCommand_ToBytes(t *testing.T) {
 				Instruction:            0x34,
 				P1:                     0x56,
 				P2:                     0x78,
-				Data:                   make([]byte, 65536),
+				Data:                   make([]byte, 65535),
 				ExpectedResponseLength: 128,
 			},
 			want: func() []byte {
-				data := []byte{0x12, 0x34, 0x56, 0x78, 0x00, 0x00}
-				data = append(data, make([]byte, 65536)...)
+				data := []byte{0x12, 0x34, 0x56, 0x78, 0x00, 0xFF, 0xFF}
+				data = append(data, make([]byte, 65535)...)
 				data = append(data, 0x00, 0x80)
 				return data
 			}(),
 		},
 		{
-			name: "case 4s.2",
+			name: "case 4e.2",
 			fields: fields{
 				Class:                  byteClass(0x12),
 				Instruction:            0x34,
 				P1:                     0x56,
 				P2:                     0x78,
-				Data:                   make([]byte, 65536),
+				Data:                   make([]byte, 65535),
 				ExpectedResponseLength: 0,
 				ExpectResponseData:     true,
 			},
 			want: func() []byte {
-				data := []byte{0x12, 0x34, 0x56, 0x78, 0x00, 0x00}
-				data = append(data, make([]byte, 65536)...)
+				data := []byte{0x12, 0x34, 0x56, 0x78, 0x00, 0xFF, 0xFF}
+				data = append(data, make([]byte, 65535)...)
 				data = append(data, 0x00, 0x00)
 				return data
 			}(),
 		},
 		{
-			name: "case 4s.3",
+			name: "case 4e.3",
 			fields: fields{
 				Class:                  byteClass(0x12),
 				Instruction:            0x34,
@@ -246,7 +246,7 @@ func TestCommand_ToBytes(t *testing.T) {
 				ExpectedResponseLength: 10000,
 			},
 			want: func() []byte {
-				data := []byte{0x12, 0x34, 0x56, 0x78, 0x00, 0x0C}
+				data := []byte{0x12, 0x34, 0x56, 0x78, 0x00, 0x00, 0x0C}
 				data = append(data, make([]byte, 12)...)
 				data = append(data, 0x27, 0x10)
 				return data

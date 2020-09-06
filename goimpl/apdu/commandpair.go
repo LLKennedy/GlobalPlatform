@@ -36,6 +36,9 @@ func (c Command) ToBytes() []byte {
 		if useExtendedLengths {
 			le = make([]byte, 2)
 			binary.BigEndian.PutUint16(le, c.ExpectedResponseLength)
+			if len(c.Data) == 0 {
+				le = append([]byte{0}, le...)
+			}
 		} else if c.ExpectedResponseLength == 256 {
 			le = []byte{0}
 		} else {
@@ -51,6 +54,7 @@ func (c Command) ToBytes() []byte {
 			lc = make([]byte, 2)
 			if dataLen < 65536 {
 				binary.BigEndian.PutUint16(lc, uint16(dataLen))
+				lc = append([]byte{0}, lc...)
 			}
 		} else {
 			lc = make([]byte, 1)
