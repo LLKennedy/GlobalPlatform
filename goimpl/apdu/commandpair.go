@@ -83,7 +83,7 @@ func (c Command) Send(t Transport) (Response, error) {
 // Response is an APDU response as specified in ISO/IEC 7816.
 type Response struct {
 	Data   []byte // Response data field
-	SW1SW2 uint16
+	Status Status
 }
 
 // ResponseFromBytes generates a Response object from raw bytes
@@ -92,12 +92,24 @@ func ResponseFromBytes(data []byte) (Response, error) {
 	if total < 2 {
 		return Response{}, fmt.Errorf("APDU response must be at least 2 bytes long")
 	}
+	statusStart := total - 2
 	res := Response{
-		SW1SW2: binary.BigEndian.Uint16(data[total-2:]),
+		Status: RawStatus{
+			SW1: data[statusStart],
+			SW2: data[statusStart+1],
+		}.Identify(),
 	}
 	if total > 2 {
-		res.Data = make([]byte, total-2)
-		copy(res.Data, data[:total-2])
+		res.Data = make([]byte, statusStart)
+		copy(res.Data, data[:statusStart])
 	}
 	return res, nil
+}
+
+// GetStatus returns the response's status, guaranteed non-nil
+func (r Response) GetStatus() Status {
+	if r.Status == nil {
+		return StatusInvalid{}
+	}
+	return r.Status
 }
