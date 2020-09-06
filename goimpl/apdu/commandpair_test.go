@@ -10,7 +10,7 @@ import (
 func TestCommand_ToBytes(t *testing.T) {
 	type fields struct {
 		Class                  Class
-		Instruction            byte
+		Instruction            Instruction
 		P1                     byte
 		P2                     byte
 		Data                   []byte
@@ -272,7 +272,7 @@ func TestCommand_ToBytes(t *testing.T) {
 func TestCommand_Send(t *testing.T) {
 	type fields struct {
 		Class                  Class
-		Instruction            byte
+		Instruction            Instruction
 		P1                     byte
 		P2                     byte
 		Data                   []byte

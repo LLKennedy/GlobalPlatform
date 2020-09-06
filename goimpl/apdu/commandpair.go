@@ -7,12 +7,12 @@ import (
 
 // Command is an APDU command as specified in ISO/IEC 7816. Lc may not be specified, since it is calculated from the provided data.
 type Command struct {
-	Class                  Class  // CLA
-	Instruction            byte   // INS
-	P1, P2                 byte   // P1, P2 = Parameter fields
-	Data                   []byte // Command data field
-	ExpectResponseData     bool   // Overridden by ExpectedResponseLength > 0, only serves to differentiate 0 = 0 and 0 = 65536
-	ExpectedResponseLength uint16 // Le = expected number of bytes returned, 0 is interpreted as max (65536) only if ExpectResponseData is true
+	Class                  Class       // CLA
+	Instruction            Instruction // INS
+	P1, P2                 byte        // P1, P2 = Parameter fields
+	Data                   []byte      // Command data field
+	ExpectResponseData     bool        // Overridden by ExpectedResponseLength > 0, only serves to differentiate 0 = 0 and 0 = 65536
+	ExpectedResponseLength uint16      // Le = expected number of bytes returned, 0 is interpreted as max (65536) only if ExpectResponseData is true
 }
 
 // ToBytes converts the command to bytes
@@ -24,7 +24,7 @@ func (c Command) ToBytes() []byte {
 		classByte = c.Class.ToClassByte()
 	}
 	// Define command header
-	header := []byte{classByte, c.Instruction, c.P1, c.P2}
+	header := []byte{classByte, byte(c.Instruction), c.P1, c.P2}
 	if len(c.Data) == 0 && !c.ExpectResponseData && c.ExpectedResponseLength == 0 {
 		// No data in or out, only header + SW1SW2
 		return header

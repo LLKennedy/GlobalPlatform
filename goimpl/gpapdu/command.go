@@ -8,11 +8,11 @@ import (
 
 // Command is the GP subset of apdu.Command, with fields altered or removed to help avoid breaking restrictions set by the GP spec
 type Command struct {
-	Class              Class  // CLA
-	Instruction        byte   // INS
-	P1, P2             byte   // P1, P2 = Parameter fields
-	Data               []byte // Command data field
-	ExpectResponseData bool   // Toggles whether any data is expected, expected length cannot be set
+	Class              Class            // CLA
+	Instruction        apdu.Instruction // INS
+	P1, P2             byte             // P1, P2 = Parameter fields
+	Data               []byte           // Command data field
+	ExpectResponseData bool             // Toggles whether any data is expected, expected length cannot be set
 }
 
 // ToAPDU returns the command as an apdu.Command, ready for byte conversion and transmission
