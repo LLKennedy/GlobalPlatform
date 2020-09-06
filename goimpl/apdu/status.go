@@ -46,7 +46,7 @@ func (r RawStatus) Raw() RawStatus {
 // Identify parses status bytes and as a specific category of status response, and processes specific data for valid non-proprietary status bytes.
 // Proprietary status definitions should wrap this functionality with additional processing for proprietary status information.
 func (r RawStatus) Identify() Status {
-	// TODO: this function is a mess of constants that could maybe be pulled out into a const block, but I'm not sure that'd be cleaner/easier to read or fix
+	// TODO: this function and its sub-functions are a mess of constants that could maybe be pulled out into a const block, but I'm not sure that'd be cleaner/easier to read or fix
 	firstSW1Nibble := r.SW1 & 0xF0
 	var combined uint16 = (uint16(r.SW1) << 8) | uint16(r.SW2)
 	var out Status = StatusInvalid{r}
