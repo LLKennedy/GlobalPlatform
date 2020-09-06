@@ -1,5 +1,7 @@
 package apdu
 
+import "fmt"
+
 // StatusCategory is a category of APDU status
 type StatusCategory int
 
@@ -24,6 +26,10 @@ type Status interface {
 	Category() StatusCategory
 	// Raw is the raw status bytes for further information or manual re-parsing
 	Raw() RawStatus
+	// Error will convert the status to an error type, if it represents an error state
+	Error() error
+	// WarningOrError will convert the status to an error type, if it represents an error or warning state
+	WarningOrError() error
 }
 
 // RawStatus is raw status bytes on their own, used to simplify more specific type definitions and conversions.
@@ -85,6 +91,16 @@ func (s StatusNormal) Category() StatusCategory {
 	return StatusCategoryNormal
 }
 
+// Error returns nil, because normal operation is not an error
+func (s StatusNormal) Error() error {
+	return nil
+}
+
+// WarningOrError returns nil, because normal operation is not a warning or error
+func (s StatusNormal) WarningOrError() error {
+	return nil
+}
+
 func identifyNormal(r RawStatus) Status {
 	var out Status = StatusInvalid{r}
 	switch r.SW1 {
@@ -104,15 +120,34 @@ func identifyNormal(r RawStatus) Status {
 
 // StatusWarning indicates a warning processing the command
 type StatusWarning struct {
-	NonVolatileMemoryChanged bool
-	NoInformationGiven       bool
-	WaitingQueryBytesLength  uint8
 	RawStatus
+	NonVolatileMemoryChanged                 bool
+	NoInformationGiven                       bool
+	WaitingQueryBytesLength                  uint8
+	PossiblePartialReturnedDataCorruption    bool
+	EOFBeforeReachedExpectedReturnDataLength bool
+	FileDeactivated                          bool
+	FileControlInformationMalformed          bool
+	FileInTerminationState                   bool
+	FileFilledByLastWrite                    bool
+	NoInputDataAvailableFromSensor           bool
+	ReturnedCounter                          bool
+	Counter                                  uint8 // 0 to 15 are the only valid values, from second nibble of SW2
 }
 
 // Category is the category of the status, to indicate which implementations should be checked against
 func (s StatusWarning) Category() StatusCategory {
 	return StatusCategoryWarning
+}
+
+// Error returns nil, because a warning is not an error
+func (s StatusWarning) Error() error {
+	return nil
+}
+
+// WarningOrError returns the raw struct, because I can't be bothered writing custom human-readable errors for all possible states
+func (s StatusWarning) WarningOrError() error {
+	return fmt.Errorf("%#v", s)
 }
 
 func identifyWarning(r RawStatus) Status {
@@ -129,24 +164,53 @@ func identifyWarning(r RawStatus) Status {
 		case r.SW2 >= 0x02 && r.SW2 <= 0x80:
 			s.WaitingQueryBytesLength = r.SW2
 		case r.SW2 == 0x81:
+			s.PossiblePartialReturnedDataCorruption = true
+		case r.SW2 == 0x82:
+			s.EOFBeforeReachedExpectedReturnDataLength = true
+		case r.SW2 == 0x83:
+			s.FileDeactivated = true
+		case r.SW2 == 0x84:
+			s.FileControlInformationMalformed = true
+		case r.SW2 == 0x85:
+			s.FileInTerminationState = true
+		case r.SW2 == 0x86:
+			s.NoInputDataAvailableFromSensor = true
 		default:
 			return StatusInvalid{r}
 		}
 		out = s
 	case 0x63:
-		out = StatusWarning{
+		s := StatusWarning{
 			RawStatus:                r,
 			NonVolatileMemoryChanged: true,
 		}
+		switch {
+		case r.SW2 == 0x00:
+			s.NoInformationGiven = true
+		case r.SW2 == 0x01:
+			s.FileFilledByLastWrite = true
+		case (r.SW2 & 0xF0) == 0xC0:
+			s.ReturnedCounter = true
+			s.Counter = r.SW2 & 0x0F
+		default:
+			return StatusInvalid{r}
+		}
+		out = s
 	}
 	return out
 }
 
 // StatusExecError indicates an error executing the command
 type StatusExecError struct {
-	NonVolatileMemoryChanged bool
-	WaitingQueryBytesLength  uint8
 	RawStatus
+	NonVolatileMemoryChanged  bool
+	WaitingQueryBytesLength   uint8
+	NoInformationGiven        bool
+	ExecutionError            bool
+	ImmediateResponseRequired bool
+	MemoryFailure             bool
+	SecurityIssues            bool
+	SecurityIssuesExtraData   byte // They didn't define 0x66XX at all, beyond "security-related issues"
 }
 
 // Category is the category of the status, to indicate which implementations should be checked against
@@ -154,9 +218,56 @@ func (s StatusExecError) Category() StatusCategory {
 	return StatusCategoryExecError
 }
 
+// Error returns the raw struct, because I can't be bothered writing custom human-readable errors for all possible states
+func (s StatusExecError) Error() error {
+	return fmt.Errorf("%#v", s)
+}
+
+// WarningOrError returns the raw struct, because I can't be bothered writing custom human-readable errors for all possible states
+func (s StatusExecError) WarningOrError() error {
+	return fmt.Errorf("%#v", s)
+}
+
 func identifyExecError(r RawStatus) Status {
 	var out Status = StatusInvalid{r}
 	switch r.SW1 {
+	case 0x64:
+		s := StatusExecError{
+			RawStatus:                r,
+			NonVolatileMemoryChanged: false,
+		}
+		switch {
+		case r.SW2 == 0x00:
+			s.ExecutionError = true
+		case r.SW2 >= 0x02 && r.SW2 <= 0x80:
+			s.WaitingQueryBytesLength = r.SW2
+		case r.SW2 == 0x01:
+			s.ImmediateResponseRequired = true
+		default:
+			return StatusInvalid{r}
+		}
+		out = s
+	case 0x65:
+		s := StatusExecError{
+			RawStatus:                r,
+			NonVolatileMemoryChanged: true,
+		}
+		switch {
+		case r.SW2 == 0x00:
+			s.NoInformationGiven = true
+		case r.SW2 == 0x81:
+			s.MemoryFailure = true
+		default:
+			return StatusInvalid{r}
+		}
+		out = s
+	case 0x66:
+		out = StatusExecError{
+			RawStatus:                r,
+			NonVolatileMemoryChanged: false,
+			SecurityIssues:           true,
+			SecurityIssuesExtraData:  r.SW2,
+		}
 	}
 	return out
 }
@@ -164,11 +275,50 @@ func identifyExecError(r RawStatus) Status {
 // StatusCheckError indicates an error checking the command
 type StatusCheckError struct {
 	RawStatus
+	WrongLengthNoFurtherIndication   bool
+	ClassFunctionsNotSupported       bool
+	ClassFunctionsNotSupportedDetail struct {
+		NoInformationGiven          bool
+		LogicalChannelNotSupported  bool
+		SecureMessagingNotSupported bool
+		LastCommandOfChainExpected  bool
+		CommandChainingNotSupported bool
+	}
+	CommandNotAllowed       bool
+	CommandNotAllowedDetail struct {
+		NoInformationGiven                        bool
+		CommandIncompatibleWithFileStructure      bool
+		SecurityStatusNotSatisfied                bool
+		AuthenticationModeBlocked                 bool
+		ReferenceDataNotUsable                    bool
+		ConditionsOfUseNotSatisfied               bool
+		CommandNotAllowedNoCurrentEF              bool
+		ExpectedSecureMessagingDataObjectsMissing bool
+		IncorrectSecureMessagingObjects           bool
+	}
+	WrongParametersNoFurtherIndication   bool
+	WrongParametersWithDetail            bool
+	WrongParametersDetail                struct{}
+	WrongLeField                         bool
+	WrongLeFieldAvailableBytes           uint8
+	InstructionCodeNotSupportedOrInvalid bool
+	ClassNotSupported                    bool
+	NoPreciseDiagnosis                   bool
 }
 
 // Category is the category of the status, to indicate which implementations should be checked against
 func (s StatusCheckError) Category() StatusCategory {
 	return StatusCategoryCheckError
+}
+
+// Error returns the raw struct, because I can't be bothered writing custom human-readable errors for all possible states
+func (s StatusCheckError) Error() error {
+	return fmt.Errorf("%#v", s)
+}
+
+// WarningOrError returns the raw struct, because I can't be bothered writing custom human-readable errors for all possible states
+func (s StatusCheckError) WarningOrError() error {
+	return fmt.Errorf("%#v", s)
 }
 
 func identifyCheckError(r RawStatus) Status {
@@ -188,6 +338,16 @@ func (s StatusProprietary) Category() StatusCategory {
 	return StatusCategoryProprietary
 }
 
+// Error always returns a simple error, because proprietary status returns should override this via composition
+func (s StatusProprietary) Error() error {
+	return fmt.Errorf("Unknown proprietary status with bytes %X%X", s.SW1, s.SW2)
+}
+
+// WarningOrError always returns a simple error, because proprietary status returns should override this via composition
+func (s StatusProprietary) WarningOrError() error {
+	return fmt.Errorf("Unknown proprietary status with bytes %X%X", s.SW1, s.SW2)
+}
+
 // StatusInvalid is an invalid status
 type StatusInvalid struct {
 	RawStatus
@@ -196,4 +356,14 @@ type StatusInvalid struct {
 // Category is the category of the status, to indicate which implementations should be checked against
 func (s StatusInvalid) Category() StatusCategory {
 	return StatusCategoryInvalid
+}
+
+// Error always returns a simple error, because this status is invalid
+func (s StatusInvalid) Error() error {
+	return fmt.Errorf("Invalid status with bytes %X%X", s.SW1, s.SW2)
+}
+
+// WarningOrError always returns a simple error, because this status is invalid
+func (s StatusInvalid) WarningOrError() error {
+	return fmt.Errorf("Invalid status with bytes %X%X", s.SW1, s.SW2)
 }
