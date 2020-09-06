@@ -296,9 +296,22 @@ type StatusCheckError struct {
 		ExpectedSecureMessagingDataObjectsMissing bool
 		IncorrectSecureMessagingObjects           bool
 	}
-	WrongParametersNoFurtherIndication   bool
-	WrongParametersWithDetail            bool
-	WrongParametersDetail                struct{}
+	WrongParametersNoFurtherIndication bool
+	WrongParametersWithDetail          bool
+	WrongParametersDetail              struct {
+		NoInformationGiven                    bool
+		IncorrectParametersInCommandData      bool
+		FunctionNotSupported                  bool
+		FileOrApplicationNotFound             bool
+		RecordNotFound                        bool
+		NotEnoughMemorySpaceInFile            bool
+		NcInconsistentWithTLV                 bool
+		IncorrectParametersP1P2               bool
+		NcInconsistentWithParametersP1P2      bool
+		ReferencedDataOrReferenceDataNotFound bool
+		FileAlreadyExists                     bool
+		DFNameAlreadyExists                   bool
+	}
 	WrongLeField                         bool
 	WrongLeFieldAvailableBytes           uint8
 	InstructionCodeNotSupportedOrInvalid bool
@@ -322,8 +335,134 @@ func (s StatusCheckError) WarningOrError() error {
 }
 
 func identifyCheckError(r RawStatus) Status {
-	var out Status = StatusInvalid{r}
+	var out Status
+	combined := (uint16(r.SW1) << 8) | uint16(r.SW2)
+	switch combined {
+	case 0x6700:
+		out = StatusCheckError{
+			RawStatus:                      r,
+			WrongLengthNoFurtherIndication: true,
+		}
+	case 0x6B00:
+		out = StatusCheckError{
+			RawStatus:                          r,
+			WrongParametersNoFurtherIndication: true,
+		}
+	case 0x6D00:
+		out = StatusCheckError{
+			RawStatus:                            r,
+			InstructionCodeNotSupportedOrInvalid: true,
+		}
+	case 0x6E00:
+		out = StatusCheckError{
+			RawStatus:         r,
+			ClassNotSupported: true,
+		}
+	case 0x6F00:
+		out = StatusCheckError{
+			RawStatus:          r,
+			NoPreciseDiagnosis: true,
+		}
+	}
+	if out != nil {
+		return out
+	}
+	out = StatusInvalid{r}
 	switch r.SW1 {
+	case 0x68:
+		s := StatusCheckError{
+			RawStatus:                  r,
+			ClassFunctionsNotSupported: true,
+		}
+		detail := s.ClassFunctionsNotSupportedDetail
+		switch r.SW2 {
+		case 0x00:
+			detail.NoInformationGiven = true
+		case 0x81:
+			detail.LogicalChannelNotSupported = true
+		case 0x82:
+			detail.SecureMessagingNotSupported = true
+		case 0x83:
+			detail.LastCommandOfChainExpected = true
+		case 0x84:
+			detail.CommandChainingNotSupported = true
+		default:
+			return StatusInvalid{r}
+		}
+		s.ClassFunctionsNotSupportedDetail = detail
+		out = s
+	case 0x69:
+		s := StatusCheckError{
+			RawStatus:         r,
+			CommandNotAllowed: true,
+		}
+		detail := s.CommandNotAllowedDetail
+		switch r.SW2 {
+		case 0x00:
+			detail.NoInformationGiven = true
+		case 0x81:
+			detail.CommandIncompatibleWithFileStructure = true
+		case 0x82:
+			detail.SecurityStatusNotSatisfied = true
+		case 0x83:
+			detail.AuthenticationModeBlocked = true
+		case 0x84:
+			detail.ReferenceDataNotUsable = true
+		case 0x85:
+			detail.ConditionsOfUseNotSatisfied = true
+		case 0x86:
+			detail.CommandNotAllowedNoCurrentEF = true
+		case 0x87:
+			detail.ExpectedSecureMessagingDataObjectsMissing = true
+		case 0x88:
+			detail.IncorrectSecureMessagingObjects = true
+		default:
+			return StatusInvalid{r}
+		}
+		s.CommandNotAllowedDetail = detail
+		out = s
+	case 0x6A:
+		s := StatusCheckError{
+			RawStatus:                 r,
+			WrongParametersWithDetail: true,
+		}
+		detail := s.WrongParametersDetail
+		switch r.SW2 {
+		case 0x00:
+			detail.NoInformationGiven = true
+		case 0x80:
+			detail.IncorrectParametersInCommandData = true
+		case 0x81:
+			detail.FunctionNotSupported = true
+		case 0x82:
+			detail.FileOrApplicationNotFound = true
+		case 0x83:
+			detail.RecordNotFound = true
+		case 0x84:
+			detail.NotEnoughMemorySpaceInFile = true
+		case 0x85:
+			detail.NcInconsistentWithTLV = true
+		case 0x86:
+			detail.IncorrectParametersP1P2 = true
+		case 0x87:
+			detail.NcInconsistentWithParametersP1P2 = true
+		case 0x88:
+			detail.ReferencedDataOrReferenceDataNotFound = true
+		case 0x89:
+			detail.FileAlreadyExists = true
+		case 0x8A:
+			detail.DFNameAlreadyExists = true
+		default:
+			return StatusInvalid{r}
+		}
+		s.WrongParametersDetail = detail
+		out = s
+	case 0x6C:
+		out = StatusCheckError{
+			RawStatus:                  r,
+			WrongLeField:               true,
+			WrongLeFieldAvailableBytes: r.SW2,
+		}
 	}
 	return out
 }
