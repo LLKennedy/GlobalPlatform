@@ -13,3 +13,8 @@ type Commands interface {
 	SetStatus()
 	StoreData()
 }
+
+// Delete is a GP delete command
+type Delete struct {
+	DeleteRelatedObjects bool
+}
