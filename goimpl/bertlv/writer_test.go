@@ -52,7 +52,7 @@ func TestWriter_Write(t *testing.T) {
 						ConstructedEncoding: false,
 						Number:              3,
 					},
-					Length: 7,
+					Length: 7000,
 					Value:  []byte{0x04, 0x0A, 0x3B, 0x5F, 0x29, 0x1C, 0xD0},
 				},
 			},

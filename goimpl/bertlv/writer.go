@@ -31,6 +31,8 @@ func (w Writer) Write(obj Object) (bytesWritten int, err error) {
 		err = fmt.Errorf("writing tag bytes: %w", err)
 		return
 	}
+	// Override length value, we don't respect the incoming data
+	obj.Length = uint64(len(obj.Value))
 	lengthWritten, lengthErr := w.output.Write(LengthToBytes(obj.Length))
 	bytesWritten += lengthWritten
 	if lengthErr != nil {
