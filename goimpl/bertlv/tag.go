@@ -1,6 +1,7 @@
 package bertlv
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -25,9 +26,11 @@ const (
 type Tag struct {
 	Class               TagClass
 	ConstructedEncoding bool
-	Number              uint64 // Technically there is no upper limit on the bit size of the tag number.
-	BigNumber           *big.Int
+	Number              uint64
+	// Technically there is no upper limit on the bit size of the tag number.
 	// You could have literally infinity octets with all bits set to one and it'd be valid. I'm capping at 64bit for sanity.
+	// BigNumber is an unimplemented workaround to the 64 bit limit, as a placeholder for future usage
+	BigNumber *big.Int
 }
 
 // ToBytes converts a Tag to bytes
@@ -40,6 +43,9 @@ func (t Tag) ToBytes() ([]byte, error) {
 	data := []byte{byte(t.Class) << 6}
 	if t.ConstructedEncoding {
 		data[0] = data[0] | b6
+	}
+	if t.BigNumber != nil {
+		return nil, fmt.Errorf("not implemented")
 	}
 	if t.Number <= 30 {
 		data[0] = data[0] | byte(t.Number)
@@ -133,6 +139,26 @@ func TagFromReader(data io.Reader) (readTotal int, tag Tag, err error) {
 		// Hopefully this never happens in reality
 		err = fmt.Errorf("not implemented")
 	}
+	return
+}
+
+// TagFromBytes converts a finite byte slice to a tag
+func TagFromBytes(data []byte) (tag Tag, err error) {
+	r := bytes.NewReader(data)
+	_, tag, err = TagFromReader(r)
+	return
+}
+
+// TagFromUint converts a uint64 to a tag
+func TagFromUint(in uint64) (tag Tag, err error) {
+	raw := make([]byte, 8)
+	binary.BigEndian.PutUint64(raw, in)
+	for i, next := range raw {
+		if next != 0 {
+			return TagFromBytes(raw[i:])
+		}
+	}
+	err = fmt.Errorf("no non-zero bytes found in input")
 	return
 }
 

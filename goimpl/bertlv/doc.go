@@ -1,2 +1,2 @@
-// Package bertlv handles marshalling/unmarshalling BER-TLV encoded objects automatically via struct tags
+// Package bertlv handles reading and writing BER-TLV encoded objects
 package bertlv
