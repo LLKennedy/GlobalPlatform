@@ -149,6 +149,15 @@ func TagFromBytes(data []byte) (tag Tag, err error) {
 	return
 }
 
+// TagFromUintForced converts a uint64 to a tag and panics if the tag is invalid
+func TagFromUintForced(in uint64) Tag {
+	tag, err := TagFromUint(in)
+	if err != nil {
+		panic(err)
+	}
+	return tag
+}
+
 // TagFromUint converts a uint64 to a tag
 func TagFromUint(in uint64) (tag Tag, err error) {
 	raw := make([]byte, 8)
