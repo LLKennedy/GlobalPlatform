@@ -13,7 +13,7 @@ func SendOnTransport(t apdu.Transport, cmd Command) (apdu.Response, error) {
 	}
 	toSend, err := cmd.ToAPDU()
 	if err != nil {
-		return apdu.Response{}, fmt.Errorf("failed to convert command to APDU: %v", err)
+		return apdu.Response{}, fmt.Errorf("failed to convert command to APDU: %w", err)
 	}
 	return t.Send(toSend)
 }

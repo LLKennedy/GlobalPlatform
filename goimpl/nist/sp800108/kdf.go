@@ -99,7 +99,7 @@ func (c *CounterKBKDF) Derive(prf PRF, counterLengthR Counter, inputKey, label, 
 		return nil, fmt.Errorf("invalid counter length, must be exactly 8, 16, 24 or 32")
 	}
 	if err := validateOrdering(inputOrder); err != nil {
-		return nil, fmt.Errorf("invalid input string ordering: %v", err)
+		return nil, fmt.Errorf("invalid input string ordering: %w", err)
 	}
 	hBytes := prf.OutputSizeBytes()
 	h := hBytes * 8
@@ -164,7 +164,7 @@ func (c *CounterKBKDF) Derive(prf PRF, counterLengthR Counter, inputKey, label, 
 		nextInput = append(nextInput, suffix...)
 		nextOutput, err := prf.Compute(inputKey, nextInput)
 		if err != nil {
-			return nil, fmt.Errorf("PRF error: %v", err)
+			return nil, fmt.Errorf("PRF error: %w", err)
 		}
 		subtle.ConstantTimeCopy(1, result[uint(i-1)*hBytes:uint(i)*hBytes], nextOutput)
 	}

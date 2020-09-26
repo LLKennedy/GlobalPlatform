@@ -118,7 +118,7 @@ func TagFromReader(data io.Reader) (readTotal int, tag Tag, err error) {
 		n, readErr := data.Read(dst)
 		readTotal += n
 		if readErr != nil {
-			err = fmt.Errorf("ran out of bytes before reaching the end of the tag: %v", readErr)
+			err = fmt.Errorf("ran out of bytes before reaching the end of the tag: %w", readErr)
 			return
 		}
 		newBits := dst[0] & 0x7F

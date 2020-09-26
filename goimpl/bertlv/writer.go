@@ -23,7 +23,7 @@ func NewWriter(output io.Writer) (w Writer, err error) {
 func (w Writer) Write(obj Object) (bytesWritten int, err error) {
 	tagBytes, tagErr := obj.Tag.ToBytes()
 	if tagErr != nil {
-		err = fmt.Errorf("failed to convert tag to bytes: %w", err)
+		err = fmt.Errorf("failed to convert tag to bytes: %w", tagErr)
 		return
 	}
 	bytesWritten, err = w.output.Write(tagBytes)
@@ -36,13 +36,13 @@ func (w Writer) Write(obj Object) (bytesWritten int, err error) {
 	lengthWritten, lengthErr := w.output.Write(LengthToBytes(obj.Length))
 	bytesWritten += lengthWritten
 	if lengthErr != nil {
-		err = fmt.Errorf("writing length bytes: %w", err)
+		err = fmt.Errorf("writing length bytes: %w", lengthErr)
 		return
 	}
 	valueWritten, valueErr := w.output.Write(obj.Value)
 	bytesWritten += valueWritten
 	if valueErr != nil {
-		err = fmt.Errorf("writing value bytes: %w", err)
+		err = fmt.Errorf("writing value bytes: %w", valueErr)
 	}
 	return
 }

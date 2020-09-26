@@ -1,5 +1,7 @@
 package apdu
 
+import "fmt"
+
 // CLASecureMessaging indicates the status and format of Secure Messaging for the command
 type CLASecureMessaging byte
 
@@ -33,6 +35,27 @@ type InterindustryClass struct {
 	NotLastCommandOfChain bool // True = more messages will be sent as part of this command, e.g. data overflow requiring multiple messages
 	SecureMessaging       CLASecureMessaging
 	LogicalChannelNumber  uint8 // Must be 0-19, values 4-19 restrict options for SecureMessaging to None or ISONoHeaderProcessing
+}
+
+// InterindustryClassFromByte parses a single byte to an InterindustryClass
+func InterindustryClassFromByte(in byte) (class InterindustryClass, err error) {
+	switch {
+	case (in & (b6 | b7 | b8)) == 0:
+		class.LogicalChannelNumber = in & 0x03
+		class.SecureMessaging = CLASecureMessaging((in & (b4 | b3)) >> 2)
+		class.NotLastCommandOfChain = (in & b5) == b5
+	case (in & (b7 | b8)) == b7:
+		class.LogicalChannelNumber = (in & 0x0F) + 4
+		if (in & b6) == b6 {
+			class.SecureMessaging = CLASMISONoHeaderProcessing
+		} else {
+			class.SecureMessaging = CLASMNone
+		}
+		class.NotLastCommandOfChain = (in & b5) == b5
+	default:
+		err = fmt.Errorf("lead bits did not match any Interindustry class byte format")
+	}
+	return
 }
 
 // ToClassByte converts the class to a class byte

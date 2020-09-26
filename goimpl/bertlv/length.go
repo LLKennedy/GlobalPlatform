@@ -35,7 +35,7 @@ func LengthFromReader(data io.Reader) (bytesRead int, length uint64, err error) 
 	read, readErr := data.Read(lengthBytes)
 	bytesRead += read
 	if readErr != nil {
-		err = fmt.Errorf("could not read length data: %w", err)
+		err = fmt.Errorf("could not read length data: %w", readErr)
 	} else if read < int(lengthLength) {
 		err = fmt.Errorf("%d length bytes were required, only %d could be read", lengthLength, read)
 	} else {

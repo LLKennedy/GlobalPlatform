@@ -47,7 +47,7 @@ func (c *Context) InitializeUpdate(channelNumber uint8, keyVersionNumber uint8, 
 	}
 	n, err := s.getRandR().Read(randomHostChallenge)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate host challenge: %v", err)
+		return nil, fmt.Errorf("failed to generate host challenge: %w", err)
 	}
 	if (c.s8mode && n != 8) || (!c.s8mode && n != 16) {
 		return nil, fmt.Errorf("failed to generate sufficient data for host challenge: got %d bytes, s8mode = %v", n, c.s8mode)
