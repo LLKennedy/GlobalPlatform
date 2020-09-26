@@ -19,7 +19,9 @@ type ControlReferenceTemplateForDigitalSignature struct {
 	TokenID                   []byte
 }
 
-func (d DeleteCardContent) unimplementableDeleteCommand() {}
+func (d DeleteCardContent) unimplementableDeleteCommandToBytes() []byte {
+	panic("not implemented")
+}
 
 // DeleteKey is a Delete [key] command
 type DeleteKey struct {
@@ -29,4 +31,6 @@ type DeleteKey struct {
 	KeyVersionNumber        byte
 }
 
-func (d DeleteKey) unimplementableDeleteCommand() {}
+func (d DeleteKey) unimplementableDeleteCommandToBytes() []byte {
+	panic("not implemented")
+}

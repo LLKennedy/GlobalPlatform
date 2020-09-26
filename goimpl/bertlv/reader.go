@@ -1,6 +1,7 @@
 package bertlv
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 )
@@ -20,6 +21,11 @@ func NewReader(data io.Reader) (r Reader, err error) {
 	return
 }
 
+// NewBytesReader creates a new Reader from raw bytes
+func NewBytesReader(data []byte) (r Reader) {
+	return Reader{bytes.NewReader(data)}
+}
+
 // Read reads the next object from data
 func (r Reader) Read() (bytesRead int, object Object, err error) {
 	tagBytes, tag, tagErr := TagFromReader(r.data)
@@ -29,6 +35,24 @@ func (r Reader) Read() (bytesRead int, object Object, err error) {
 		return
 	}
 	object.Tag = tag
+	lengthBytes, length, lengthErr := LengthFromReader(r.data)
+	bytesRead += lengthBytes
+	if lengthErr != nil {
+		err = fmt.Errorf("error reading length: %w", lengthErr)
+		return
+	}
+	object.Length = length
+	object.Value = make([]byte, length)
+	valueBytes, valueErr := r.data.Read(object.Value)
+	bytesRead += valueBytes
+	if valueErr != nil {
+		err = fmt.Errorf("error reading value: %w", valueErr)
+	}
+	return
+}
+
+// ReadWithoutTag reads the next object from data, skipping the tag
+func (r Reader) ReadWithoutTag() (bytesRead int, object Object, err error) {
 	lengthBytes, length, lengthErr := LengthFromReader(r.data)
 	bytesRead += lengthBytes
 	if lengthErr != nil {
