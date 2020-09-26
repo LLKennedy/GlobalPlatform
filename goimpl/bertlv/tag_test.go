@@ -84,6 +84,16 @@ func TestTag_ToBytes(t *testing.T) {
 			assertion: assert.NoError,
 			want:      []byte{0b00011111, 0b10000100, 0b11001100, 0b11011000, 0b10000101, 0b01010010},
 		},
+		{
+			name: "uinit64 max",
+			tr: Tag{
+				Class:               TagClassUniversal,
+				ConstructedEncoding: true,
+				Number:              0xFFFFFFFFFFFFFFFF,
+			},
+			assertion: assert.NoError,
+			want:      []byte{0b00111111, 0b10000001, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b01111111},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -112,25 +122,115 @@ func TestTag_Write(t *testing.T) {
 	}
 }
 
-func TestTagFromBytes(t *testing.T) {
+func TestTagFromReader(t *testing.T) {
 	type args struct {
 		data io.Reader
 	}
 	tests := []struct {
-		name         string
-		args         args
-		wantTag      Tag
-		wantOverread bool
-		assertion    assert.ErrorAssertionFunc
+		name      string
+		args      args
+		wantTag   Tag
+		wantRead  int
+		assertion assert.ErrorAssertionFunc
 	}{
-		// TODO: Add test cases.
+		{
+			name: "low number",
+			wantTag: Tag{
+				Class:               TagClassContextSpecific,
+				ConstructedEncoding: true,
+				Number:              27,
+			},
+			assertion: assert.NoError,
+			args: args{
+				data: bytes.NewReader([]byte{0b10111011}),
+			},
+			wantRead: 1,
+		},
+		{
+			name: "30 edge",
+			wantTag: Tag{
+				Class:               TagClassApplication,
+				ConstructedEncoding: true,
+				Number:              30,
+			},
+			assertion: assert.NoError,
+			args: args{
+				data: bytes.NewReader([]byte{0b01111110}),
+			},
+			wantRead: 1,
+		},
+		{
+			name: "31 edge",
+			wantTag: Tag{
+				Class:               TagClassApplication,
+				ConstructedEncoding: true,
+				Number:              31,
+			},
+			assertion: assert.NoError,
+			args: args{
+				data: bytes.NewReader([]byte{0b01111111, 0b00011111}),
+			},
+			wantRead: 2,
+		},
+		{
+			name: "127 edge",
+			wantTag: Tag{
+				Class:               TagClassPrivate,
+				ConstructedEncoding: false,
+				Number:              127,
+			},
+			assertion: assert.NoError,
+			args: args{
+				data: bytes.NewReader([]byte{0b11011111, 0b01111111}),
+			},
+			wantRead: 2,
+		},
+		{
+			name: "128 edge",
+			wantTag: Tag{
+				Class:               TagClassUniversal,
+				ConstructedEncoding: false,
+				Number:              128,
+			},
+			assertion: assert.NoError,
+			args: args{
+				data: bytes.NewReader([]byte{0b00011111, 0b10000001, 0b00000000}),
+			},
+			wantRead: 3,
+		},
+		{
+			name: "1,234,567,890 example of large scale",
+			wantTag: Tag{
+				Class:               TagClassUniversal,
+				ConstructedEncoding: false,
+				Number:              1234567890,
+			},
+			assertion: assert.NoError,
+			args: args{
+				data: bytes.NewReader([]byte{0b00011111, 0b10000100, 0b11001100, 0b11011000, 0b10000101, 0b01010010}),
+			},
+			wantRead: 6,
+		},
+		{
+			name: "uint64 max",
+			wantTag: Tag{
+				Class:               TagClassUniversal,
+				ConstructedEncoding: true,
+				Number:              0xFFFFFFFFFFFFFFFF,
+			},
+			assertion: assert.NoError,
+			args: args{
+				data: bytes.NewReader([]byte{0b00111111, 0b10000001, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b01111111}),
+			},
+			wantRead: 11,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTag, gotOverread, err := TagFromBytes(tt.args.data)
+			gotRead, gotTag, err := TagFromReader(tt.args.data)
 			tt.assertion(t, err)
 			assert.Equal(t, tt.wantTag, gotTag)
-			assert.Equal(t, tt.wantOverread, gotOverread)
+			assert.Equal(t, tt.wantRead, gotRead)
 		})
 	}
 }

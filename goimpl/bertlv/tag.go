@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math/big"
 )
 
 // TagClass is the class of a Tag
@@ -25,6 +26,7 @@ type Tag struct {
 	Class               TagClass
 	ConstructedEncoding bool
 	Number              uint64 // Technically there is no upper limit on the bit size of the tag number.
+	BigNumber           *big.Int
 	// You could have literally infinity octets with all bits set to one and it'd be valid. I'm capping at 64bit for sanity.
 }
 
@@ -44,8 +46,8 @@ func (t Tag) ToBytes() ([]byte, error) {
 		return data, nil
 	}
 	data[0] = data[0] | 31
-	raw := make([]byte, 8)
-	binary.BigEndian.PutUint64(raw, t.Number)
+	raw := make([]byte, 9) // Leading zeroes in case we need to use the MSB with an interval of 7 bits
+	binary.BigEndian.PutUint64(raw[1:], t.Number)
 	upperLimit := uint64(0x7F)
 	requiredBytes := 1
 	for upperLimit < t.Number {
@@ -88,8 +90,49 @@ func (t Tag) Write(w io.Writer) error {
 	return nil
 }
 
-// TagFromBytes converts a tag from an io.Reader, it will only read more than necessary if the tag is invalid in the number section and will return overread = true if it overread by one byte.
-func TagFromBytes(data io.Reader) (tag Tag, overread bool, err error) {
+// TagFromReader converts a tag from an io.Reader
+func TagFromReader(data io.Reader) (readTotal int, tag Tag, err error) {
+	firstByteDst := make([]byte, 1)
+	readTotal, err = data.Read(firstByteDst)
+	if err != nil {
+		return
+	}
+	firstByte := firstByteDst[0]
+	tag.Class = (TagClass(firstByte) & (b8 | b7)) >> 6
+	tag.ConstructedEncoding = (firstByte & b6) > 0
+	number := firstByte & 31
+	if number < 31 {
+		tag.Number = uint64(number)
+		return
+	}
+	var bitSets []byte
+	dst := make([]byte, 1)
+	for {
+		dst[0] = 0
+		n, readErr := data.Read(dst)
+		readTotal += n
+		if readErr != nil {
+			err = fmt.Errorf("ran out of bytes before reaching the end of the tag: %v", readErr)
+			return
+		}
+		newBits := dst[0] & 0x7F
+		bitSets = append(bitSets, newBits)
+		if (dst[0] & b8) == 0 {
+			break
+		}
+	}
+	if len(bitSets) <= 10 && (len(bitSets) < 10 || bitSets[0] < 2) {
+		// We can fit this into a 64 int
+		u64 := uint64(0)
+		for i := 0; i < len(bitSets); i++ {
+			u64 = u64 | (uint64(bitSets[len(bitSets)-1-i]) << (i * 7))
+		}
+		tag.Number = u64
+	} else {
+		// We need a *big.Int to store a number this big
+		// Hopefully this never happens in reality
+		err = fmt.Errorf("not implemented")
+	}
 	return
 }
 
@@ -109,7 +152,7 @@ func (b *reverseBitReader) ReadBit() byte {
 		b.index++
 	}
 	if bit > 0 {
-		// Always return true as just b1
+		// Always return true as just b1 so it can get bitshifted appropriately
 		return b1
 	}
 	return 0
