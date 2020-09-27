@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/llkennedy/globalplatform/goimpl/apdu"
-	"github.com/llkennedy/globalplatform/goimpl/bertlv"
 )
 
 // Client is a GP client wrapping APDU commands
@@ -39,15 +38,15 @@ func (c *Client) Delete(deleteRelatedObjects bool, cmd DeleteCommand) (confirmat
 	} else {
 		command.Data = fullData
 	}
-	res, sendErr := SendOnTransport(c.transport, command)
-	if sendErr != nil {
-		return nil, fmt.Errorf("sending command: %w", sendErr)
-	}
+	// res, sendErr := SendOnTransport(c.transport, command)
+	// if sendErr != nil {
+	// 	return nil, fmt.Errorf("sending command: %w", sendErr)
+	// }
 	// FIXME: multiple sends, multiple responds to map
-	r := bertlv.NewBytesReader(res.Data)
-	_, obj, readErr := r.ReadWithoutTag()
-	if readErr != nil {
-		return nil, fmt.Errorf("reading response: %w", readErr)
-	}
-	return obj.Value, nil
+	// r := bertlv.NewBytesReader(res.Data)
+	// _, obj, readErr := r.ReadWithoutTag()
+	// if readErr != nil {
+	// 	return nil, fmt.Errorf("reading response: %w", readErr)
+	// }
+	return //obj.Value, nil
 }

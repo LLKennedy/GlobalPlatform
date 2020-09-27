@@ -1,11 +1,5 @@
 package gpapdu
 
-import (
-	"bytes"
-
-	"github.com/llkennedy/globalplatform/goimpl/bertlv"
-)
-
 const (
 	tagELFileOrAppID                 = 0x4F
 	tagCRTFDS                        = 0xB6
@@ -22,44 +16,44 @@ type DeleteCommand interface {
 
 // ControlReferenceTemplateForDigitalSignature is a control reference template for digital signature
 type ControlReferenceTemplateForDigitalSignature struct {
-	SecurityDomainID          []byte
-	SecurityDomainImageNumber []byte
-	ApplicationProviderID     []byte
-	TokenID                   []byte
+	SecurityDomainID          []byte `asn1:"optional,omitempty,tag:42"`
+	SecurityDomainImageNumber []byte `asn1:"optional,omitempty,tag:45"`
+	ApplicationProviderID     []byte `asn1:"optional,omitempty,tag:5F20"`
+	TokenID                   []byte `asn1:"optional,omitempty,tag:93"`
 }
 
 // ToBerTlv encodes the data as BER-TLV
-func (c ControlReferenceTemplateForDigitalSignature) ToBerTlv() (obj bertlv.Object) {
-	obj.Tag = bertlv.TagFromUintForced(tagCRTFDS)
-	buf := bytes.NewBuffer(nil)
-	writer, _ := bertlv.NewWriter(buf)
-	if c.SecurityDomainID != nil {
-		writer.Write(bertlv.Object{
-			Tag:   bertlv.TagFromUintForced(tagSecurityDomainID),
-			Value: c.SecurityDomainID,
-		})
-	}
-	if c.SecurityDomainImageNumber != nil {
-		writer.Write(bertlv.Object{
-			Tag:   bertlv.TagFromUintForced(tagSecurityDomainImageNumber),
-			Value: c.SecurityDomainImageNumber,
-		})
-	}
-	if c.ApplicationProviderID != nil {
-		writer.Write(bertlv.Object{
-			Tag:   bertlv.TagFromUintForced(tagApplicationProviderIdentifier),
-			Value: c.ApplicationProviderID,
-		})
-	}
-	if c.TokenID != nil {
-		writer.Write(bertlv.Object{
-			Tag:   bertlv.TagFromUintForced(tagTokenID),
-			Value: c.TokenID,
-		})
-	}
-	obj.Value = buf.Bytes()
-	return
-}
+// func (c ControlReferenceTemplateForDigitalSignature) ToBerTlv() (obj bertlv.Object) {
+// 	obj.Tag = bertlv.TagFromUintForced(tagCRTFDS)
+// 	buf := bytes.NewBuffer(nil)
+// 	writer, _ := bertlv.NewWriter(buf)
+// 	if c.SecurityDomainID != nil {
+// 		writer.Write(bertlv.Object{
+// 			Tag:   bertlv.TagFromUintForced(tagSecurityDomainID),
+// 			Value: c.SecurityDomainID,
+// 		})
+// 	}
+// 	if c.SecurityDomainImageNumber != nil {
+// 		writer.Write(bertlv.Object{
+// 			Tag:   bertlv.TagFromUintForced(tagSecurityDomainImageNumber),
+// 			Value: c.SecurityDomainImageNumber,
+// 		})
+// 	}
+// 	if c.ApplicationProviderID != nil {
+// 		writer.Write(bertlv.Object{
+// 			Tag:   bertlv.TagFromUintForced(tagApplicationProviderIdentifier),
+// 			Value: c.ApplicationProviderID,
+// 		})
+// 	}
+// 	if c.TokenID != nil {
+// 		writer.Write(bertlv.Object{
+// 			Tag:   bertlv.TagFromUintForced(tagTokenID),
+// 			Value: c.TokenID,
+// 		})
+// 	}
+// 	obj.Value = buf.Bytes()
+// 	return
+// }
 
 // DeleteCardContent is Delete [card content] command
 type DeleteCardContent struct {
